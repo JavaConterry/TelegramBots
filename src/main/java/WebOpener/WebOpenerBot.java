@@ -1,24 +1,30 @@
+package WebOpener;
+
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import org.telegram.telegrambots.meta.generics.TelegramBot;
 
-import java.util.Random;
+import java.io.IOException;
 
-public class RandBot extends TelegramLongPollingBot {
+public class WebOpenerBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
+            String toSearch = update.getMessage().getText();
             SendMessage message = new SendMessage();
-            Random rand = new Random();
-            int a = rand.nextInt(1,50);
             message.setChatId(update.getMessage().getChatId().toString());
-            message.setText(String.valueOf(a));
+            message.setText(toSearch);
+
             try {
                 execute(message);
-            } catch (TelegramApiException e) {
+                Runtime.getRuntime()
+                        .exec(new String[]{
+                                "cmd", "/c","start opera https://en.wikipedia.org/wiki/"+toSearch
+                        });
+            } catch (IOException | TelegramApiException e) {
                 e.printStackTrace();
             }
         }
@@ -26,7 +32,7 @@ public class RandBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "ThrowRandomNumberBot";
+        return "WebOpener";
     }
 
     @Override
@@ -34,3 +40,4 @@ public class RandBot extends TelegramLongPollingBot {
         return System.getenv("BOT_TOKEN");
     }
 }
+
