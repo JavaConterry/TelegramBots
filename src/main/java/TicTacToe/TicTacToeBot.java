@@ -2,6 +2,8 @@ package TicTacToe;
 
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -9,9 +11,14 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TicTacToeBot extends TelegramLongPollingBot {
+
+    Map<User, String> signers = new LinkedHashMap<User, String>();
+    int[][] buttonsLog = {{0, 0, 0},{0, 0, 0},{0, 0, 0}};
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -19,9 +26,55 @@ public class TicTacToeBot extends TelegramLongPollingBot {
             if (update.getMessage().getText().equals("/buttons")) {
                 setKeyboard(update);
             }
-        }else if (update.hasCallbackQuery() && isButtonQuery(update)) {
-            System.out.println(update.getCallbackQuery().getData());
+        }else if (update.hasCallbackQuery()) {
+            if(isButtonQuery(update)) {
+
+                String call_data = update.getCallbackQuery().getData();
+                long message_id = update.getCallbackQuery().getMessage().getMessageId();
+                long chat_id = update.getCallbackQuery().getMessage().getChatId();
+                User user = update.getCallbackQuery().getFrom();
+                EditMessageReplyMarkup replyMarkup = new EditMessageReplyMarkup();
+                replyMarkup.setMessageId((int)message_id);
+                replyMarkup.setChatId(String.valueOf(chat_id));
+
+
+                int buttonIndex = Integer.valueOf(call_data.split(" ")[1]);
+                InlineKeyboardMarkup markup = update.getCallbackQuery()
+                        .getMessage()
+                        .getReplyMarkup();
+                List<List<InlineKeyboardButton>> keyboard =  markup.getKeyboard();
+                InlineKeyboardButton callbackButton =keyboard.get(buttonIndex / 3).get(buttonIndex % 3);
+                InlineKeyboardButton newButton = changeButtonWithUser(user, callbackButton);
+                List<InlineKeyboardButton> rowsInline = keyboard.get(buttonIndex/3);
+                rowsInline.set(buttonIndex % 3, newButton);
+                keyboard.set(buttonIndex / 3, rowsInline);
+                markup.setKeyboard(keyboard);
+                replyMarkup.setReplyMarkup(markup);
+
+                try {
+                    execute(replyMarkup);
+                } catch (TelegramApiException e) {
+                    e.printStackTrace();
+                }
+            }
         }
+    }
+
+    private InlineKeyboardButton changeButtonWithUser(User user, InlineKeyboardButton button) {
+        if(signers.size()==2){
+            if(button.getText().equals(" ")) {
+                button.setText(signers.get(user));
+            }
+        } else if(signers.get(user)==null){
+            if(signers.containsValue("❌")){
+                signers.put(user, "❌");
+            }
+            else{
+                signers.put(user, "⭕");
+            }
+            button.setText(signers.get(user));
+        }
+        return button;
     }
 
     public boolean isButtonQuery(Update update){
@@ -32,7 +85,6 @@ public class TicTacToeBot extends TelegramLongPollingBot {
 
             long chat_id = update.getMessage().getChatId();
             int fieldWidth = 3;
-            int[][] buttonsLog = {{0, 0, 0},{0, 0, 0},{0, 0, 0}};
 
             SendMessage message = new SendMessage();
             message.setChatId(String.valueOf(chat_id));
